@@ -1,9 +1,10 @@
 # Simple Galois field library in C++
 A very simple Galois field library for GF(p)
 
-## Getting Started
+## Some desription
 
 As said above, it handles Galois fields GF(p), where p is any 16-bit prime number. Doesn't support GF(p^n) (at least for now).
+It was written to be used mainly in non-typical (not GF(2^8)) Reed-Solomon codes, but can be used in any solution.
 
 ## Capabilites
 
