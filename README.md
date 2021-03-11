@@ -5,6 +5,16 @@ A very simple Galois field library for GF(p)
 
 As said above, it handles Galois fields GF(p), where p is any 16-bit prime number. Doesn't support GF(p^n) (at least for now).
 
+## Capabilites
+
+* Addition
+* Subtraction
+* Multiplication (using lookup tables or typical calculation)
+* Division
+* Power
+* Inverse
+* Prime number generation 
+
 ## Contributing
 
 Any contributions are appreciated.
