@@ -1,3 +1,27 @@
+/*
+    This file is part of simple Galois field library.
+
+    This is a free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    It is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/**
+* @file gf.cpp
+* @brief Simple Galois field library
+* @author Piotr Wilkon <sq8vps@gmail.com>
+* @copyright Copyright 2021 Piotr Wilkon, licensed under GNU GPLv3
+**/
+
 #include "gf.h"
 
 /**
@@ -8,7 +32,7 @@
  */
 uint16_t GF::add(uint16_t x, uint16_t y)
 {
-    return (x + y) % len;
+    return (x + y) % len; //the most trivial operation here. Just add and then keep the result in GF boundaries
 }
 
 /**
@@ -21,7 +45,8 @@ uint16_t GF::sub(uint16_t x, uint16_t y)
 {
     if(x >= y)
        return (x - y) % len;
-    return (int32_t)len + (((int32_t)x - (int32_t)y) % (int32_t)len);
+    //len+(x-y)=len-(y-x) to avoid some signed/unsigned casts
+    return len - ((y - x) % len);
 }
 
 /**
@@ -34,7 +59,9 @@ uint16_t GF::mul(uint16_t x, uint16_t y)
 {
     if((x == 0) || (y == 0)) //trivial multiplication by 0
         return 0;
-    return exp[log[x] + log[y]];
+
+    return exp[(log[x] + log[y]) % (len - 1)];
+    //TODO: why (len - 1) and not len? (why it works?)
 }
 
 /**
@@ -49,17 +76,12 @@ uint16_t GF::div(uint16_t dividend, uint16_t divisor)
     if(dividend == 0) return 0; //trivial division of 0
     //similarly to multiplication, x/y=b^(log(x)-log(y)), where b is the logarithm base
 
-    if((dividend % divisor) == 0)
-        return ((dividend / divisor) % len);
+    int32_t t = log[dividend] - log[divisor]; //temporarily store
 
-    uint64_t a = dividend;
-    for(uint16_t i = 1; i < divisor; i++)
-    {
-        a += len;
-        if((a % divisor) == 0)
-            return (a / divisor) % len;
-    }
-    return 0;
+    if(t >= 0) //logarithm difference is positive
+    	return exp[t];
+
+    return exp[(len - 1) + t]; //logarithm difference is negative and so the index, can't use negative indexes, so convert it to positive
 }
 
 /**
@@ -70,8 +92,9 @@ uint16_t GF::div(uint16_t dividend, uint16_t divisor)
  */
 uint16_t GF::pow(uint16_t x, uint16_t exponent)
 {
-    //since a*log(x)=log(x^a) and b^log(x)=x, b^(a*log(x))=b^(log(x^a))=x^a, where b is the logairthm base
+    //since a*log(x)=log(x^a) and b^log(x)=x, b^(a*log(x))=b^(log(x^a))=x^a, where b is the logarithm base
     return exp[(exponent * log[x]) % (len - 1)];
+    //TODO: why (len - 1) and not len? (why it works?)
 }
 
 /**
@@ -81,7 +104,11 @@ uint16_t GF::pow(uint16_t x, uint16_t exponent)
  */
 uint16_t GF::inv(uint16_t x)
 {
-    return exp[(len - 1) - log[x]];
+    if(x == 0) //0 has no inverse
+    	return 0; //but return 0
+
+
+    return exp[(len - 1) - log[x]]; //x^(-1)=b^(-log(x)), but we don't have negative indexes, so just start from the last value in table (which is at len-1)
 }
 
 /**
@@ -98,217 +125,84 @@ uint16_t GF::slowMul(uint16_t x, uint16_t y)
     return (x * y) % len;
 }
 
-#ifdef AAAAAAA
-
 /**
- * @brief Multiplies polynomial by a scalar
- * @param p Input polynomial pointer
- * @param o Length of polynomial buffer (degree of a poly + 1)
- * @param s Scalar multiplicand
- * @param out Ouput polynomial. Has the same degree as input polynomial
+ * @brief Check if number is prime
+ * @param x Input number
+ * @return 0 if prime, -1 if not
  */
-void ReedSolomon::gfPolyScale(uint8_t *p, uint16_t o, uint8_t s, uint8_t *out)
+int8_t GF::checkPrime(uint16_t x)
 {
-    for(uint16_t i = 0; i < o; i++)
-    {
-        out[i] = gfMul(p[i], s);
-    }
+	if(x < 2)
+		return -1; //definitely not primes
+
+	for(uint16_t i = 2; i < (x >> 1); i++)
+	{
+		if((x % i) == 0) //divisible by something - not a prime
+			return -1;
+	}
+	return 0; //probably prime
 }
 
 /**
- * @brief Adds two polynomials
- * @param p1 1st polynomial
- * @param o1 1st polynomial buffer length (degree of a poly + 1)
- * @param p2 2nd polynomial
- * @param o2 2nd polynomial buffer length (degree of a poly + 1)
- * @param order Order of variables in polynomials (0 for c,x,x^2...)
- * @param out Output polynomial. Has the same degree as the input polynomial of a higher degree
- * @return Output polynomial length
+ * @brief Finds the highest prime number, but smaller than max
+ * @param max The limit
+ * @return Prime number, 0 if fail
  */
-uint16_t ReedSolomon::gfPolyAdd(uint8_t *p1, uint16_t o1, uint8_t *p2, uint16_t o2, uint8_t *out, uint8_t order)
+uint16_t GF::findPrime(uint16_t max)
 {
-    if(o1 >= o2) //p1 is longer than p2
-    {
-        for(uint16_t i = 0; i < o1; i++)
-        {
-            out[i] = p1[i]; //copy longer (p1) polynomial
-        }
-        for(uint16_t i = (order ? (o1 - o2) : (0)); i < o2; i++)
-        {
-            out[i] ^= p2[i]; //sum (or subtract) the corresponding p2 coefficients
-        }
-    }
-    else //p2 is longer than p1
-    {
-        for(uint16_t i = 0; i < o2; i++)
-        {
-            out[i] = p2[i];
-        }
-        for(uint16_t i = (order ? (o2 - o1) : (0)); i < o1; i++)
-        {
-            out[i] ^= p1[i];
-        }
-    }
-    if(o1 >= o2) //the output polynomial has the same length as the longest input poly
-        return o1;
-    else
-        return o2;
+	if(max < 2)
+		return 0;
+	if(max == 2)
+		return 2;
+
+	max--;
+	for(; max > 0; max--)
+	{
+		if(checkPrime(max) == 0)
+			return max;
+	}
+
+	return 0;
 }
 
 /**
- * @brief Multiplies two polynomials
- * @param p1 1st polynomial
- * @param o1 1st polynomial buffer length (degree of a poly + 1)
- * @param p2 2nd polynomial
- * @param o2 2nd polynomial buffer length (degree of a poly + 1)
- * @param out Output polynomial. Has a length of o1 + o2 - 1
+ * @brief Initializes Galois Field object
+ * @param p Field characteristic GF(p), must be prime
  */
-void ReedSolomon::gfPolyMul(uint8_t *p1, uint16_t o1, uint8_t *p2, uint16_t o2, uint8_t *out)
-{
-    memset(out, 0, o1 + o2 - 1);
-    for(uint16_t i = 0; i < o1; i++)
-    {
-        for(uint16_t j = 0; j < o2; j++)
-        {
-            out[i+j] ^= gfMul(p1[i], p2[j]); //multiply each coefficient of p1 with each coefficient of p2 and sum the same powers
-        }
-    }
-}
-
-/**
- * @brief Evaluates the polynomial at the specified x
- * @param *p Polynomial
- * @param o Polynomial buffer length (degree of a poly + 1)
- * @param x Value to evaluate the polynomial at
- * @return Evaluated value
- */
-uint8_t ReedSolomon::gfPolyEval(uint8_t *p, uint16_t o, uint8_t x)
-{
-    uint8_t ret = p[0];
-    for(uint16_t i = 1; i < o; i++)
-    {
-        ret = gfAdd(gfMul(ret, x), p[i]); //this uses Horner's scheme to perform fast evaluation
-    }
-    return ret;
-}
-
-
-/**
- * @brief Divide two polynomials
- * @param p1 Divident polynomial
- * @param o1 Divident polynomial buffer length
- * @param p2 Divisor polynomial
- * @param o2 Divisor polynomial buffer length
- * @param q Quotient polynomial (length = divident length - divisor length + 1)
- * @param r Remainder polynomial (length = divisor length - 1)
- */
-void ReedSolomon::gfPolyDiv(uint8_t *p1, uint16_t o1, uint8_t *p2, uint16_t o2, uint8_t *q, uint8_t *r)
-{
-    uint8_t *t = new uint8_t[o1];
-    memcpy(t, p1, o1);
-    for(uint16_t i = 0; i < (o1 - o2 + 1); i++)
-    {
-        if(p1[i] == 0) continue;
-
-        for(uint16_t j = 1; j < o2; j++)
-        {
-            if(p2[j] == 0) continue;
-            t[i + j] ^= gfMul(p2[j], p1[i]);
-        }
-    }
-    memcpy(q, t, o1 - o2 + 1);
-    memcpy(r, t + o1, o2 - 1);
-
-    delete[] t;
-}
-
-/**
- * @brief Divide two polynomials (returing remainder only)
- * @param p1 Divident polynomial
- * @param o1 Divident polynomial buffer length
- * @param p2 Divisor polynomial
- * @param o2 Divisor polynomial buffer length
- * @param r Remainder polynomial (length = divisor length - 1)
- */
-void ReedSolomon::gfPolyDiv(uint8_t *p1, uint16_t o1, uint8_t *p2, uint16_t o2, uint8_t *r)
-{
-    uint8_t *t = new uint8_t[o1];
-    memcpy(t, p1, o1);
-    for(uint16_t i = 0; i < (o1 - o2 + 1); i++)
-    {
-        uint8_t coef = t[i];
-        if(coef == 0) continue;
-
-        for(uint16_t j = 1; j < o2; j++)
-        {
-            if(p2[j] == 0) continue;
-            t[i + j] ^= gfMul(p2[j], coef);
-        }
-    }
-    memcpy(r, t + o1 - o2 + 1, o2 - 1);
-
-    delete[] t;
-}
-
-/**
- * @brief Generates generator (encoding) polynomial
- * @param t Number of redundancy symbols (n-k)
- * @param out Output polynomial (length = t + 1)
- */
-void ReedSolomon::gfGeneratorPoly(uint16_t t, uint8_t *out)
-{
-    if(t == 0)
-        return;
-    memset(out, 0, t + 1);
-    out[0] = 1;
-    uint8_t *tmp = new uint8_t[t + 1];
-    memset(tmp, 0, t + 1);
-    for(uint16_t i = 0; i < t; i++)
-    {
-        memcpy(tmp, out, i + 1);
-        uint8_t h[2] = {1, gfPow(2, (uint8_t)i)}; //generate irreducible polynomial
-        gfPolyMul(tmp, i + 1, h, 2, out);
-    }
-    delete[] tmp;
-}
-
-/**
- * @brief Reverses the order of variables in a polynomial (in-place)
- * @param p Polynomial
- * @param o Polynomial length (order + 1)
- */
-void ReedSolomon::gfPolyInv(uint8_t *p, uint16_t o)
-{
-    for(uint16_t i = 0; i < (o >> 1); i++)
-    {
-        uint8_t tmp = p[i];
-        p[i] = p[o - i - 1]; //perform in-place swap
-        p[o - i - 1] = tmp;
-    }
-}
-#endif
 GF::GF(uint16_t p)
 {
-    len = p;
+    if(checkPrime(p) != 0)
+    	return; //not a prime number
 
-    exp = new uint16_t[len << 1]; //initialize tables for Galois field exponential and logarithmic functions lookup
-    log = new uint16_t[len];
+    len = p; //store characteristic
+
+	//TODO: I don't know yet why, but to generator number to generate lookup tables must be the highest prime number lower than the GF characteristic
+	//otherwise we will get non-unique values
+    //in "standard" Galois fields GF(p^n), where n>1, the elements of this field are polynomials with a degree of up to n-1
+    //the generator polynomial has a degree of n and must be irreducible
+	uint16_t gen = findPrime(p);
+
+    //initialize lookup tables for fast calculations
+    exp = new uint16_t[len]; //exponential function table for every possible exponent in this field
+    //if we have GF(p), there are p numbers in this field: 0,...,p-1
+    //we can have the exp(x), where x is any element of GF(p), so it creates a table of p elements
+    //for log(x) we can have all elements of GF(p) except 0 (log(0) is not defined).
+    //the x (defined below) will wrap around to 1 in the last iteration
+    //this means we have one non-unique value of x in our tables.
+    //For example, in GF(7) with generator number 5, exp(0)=exp(6)=1 and that's true (7^0=1 and 7^6 mod 7=1)
+    //although this is a problem for the logarithm, as it will have two different values for the same argument (log(1)=0 and log(1)=6)
+    //log(x) is a function, so it must have only one value associated with one value. Just drop the log(1)=6.
+    log = new uint16_t[len]; //logarithmic function table
 
     uint16_t x = 1;
-    //fill logarithm and exponential f. lookup tables for all possible values
-    for(uint16_t i = 0; i < len; i++)
+    //fill lookup tables
+    for(uint16_t i = 0; i < (len - 1); i++) //skip the last element for log table
     {
-        exp[i] = x;
+    	exp[i] = x;
         log[x] = i;
-        x = slowMul(x, 16);
+        x = slowMul(x, gen); //get next x by multiplying it by the generator number
     }
-    for(uint16_t i = len; i < (len << 1); i++)
-    {
-        exp[i] = exp[i - len - 1]; //this is not neccessary, but it will speed up the multiplication and division process by using only the lookup tables
-    }
-
-
-
+    exp[len - 1] = x; //store last element in exp table
 }
 
 GF::~GF()
