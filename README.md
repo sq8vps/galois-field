@@ -1,10 +1,17 @@
 # Simple Galois field library in C++
-A very simple Galois field library for GF(p)
+A very simple Galois field library for GF(2^8) and GF(p)
 
-## Some desription
+## Short description
 
-As said above, it handles Galois fields GF(p), where p is any 16-bit prime number. Doesn't support GF(p^n) (at least for now).
-It was written to be used mainly in non-typical (not GF(2^8)) Reed-Solomon codes, but can be used in any solution.
+There are two separate libraries: the first one (gf2.h) is for handling typical GF(2^8) which is commonly used for standard Reed-Solomon coding.
+The second one (gfn.h) if for GF(p), where p is any 16-bit prime number.
+
+## Data representation
+
+Galois (finite) field elements are represented as polynomial. For GF(2^8) there are polynomials of a degree lower than 8 and with coefficients being integers modulo 2 (they can have values either 0 or 1).
+These are stored as 8-bit bytes, where every bit is a polynomial coefficient. The LSB represents a coefficient for x^0, while the MSB - for x^7. This is a very common approach.
+
+GF(p) is in fact GF(p^1). This means there are polynomials of a degree 0 with coefficients being integers modulo p. Effectively, all elements are just numbers. 
 
 ## Capabilites
 

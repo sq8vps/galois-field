@@ -16,13 +16,14 @@
  */
 
 /**
-* @file gf.cpp
-* @brief Simple Galois field library
+* @file gfn.cpp
+* @brief Simple Galois field library for GF(p)
+* @version 1.1
 * @author Piotr Wilkon <sq8vps@gmail.com>
 * @copyright Copyright 2021 Piotr Wilkon, licensed under GNU GPLv3
 **/
 
-#include "gf.h"
+#include "gfn.h"
 
 /**
  * @brief Addition in Galois field
@@ -30,7 +31,7 @@
  * @param y Term 2
  * @return Sum
  */
-uint16_t GF::add(uint16_t x, uint16_t y)
+uint16_t GFn::add(uint16_t x, uint16_t y)
 {
     return (x + y) % len; //the most trivial operation here. Just add and then keep the result in GF boundaries
 }
@@ -41,7 +42,7 @@ uint16_t GF::add(uint16_t x, uint16_t y)
  * @param y Subtrahend
  * @return Difference
  */
-uint16_t GF::sub(uint16_t x, uint16_t y)
+uint16_t GFn::sub(uint16_t x, uint16_t y)
 {
     if(x >= y)
        return (x - y) % len;
@@ -55,13 +56,12 @@ uint16_t GF::sub(uint16_t x, uint16_t y)
  * @param y Multiplier
  * @return Multiplication result
  */
-uint16_t GF::mul(uint16_t x, uint16_t y)
+uint16_t GFn::mul(uint16_t x, uint16_t y)
 {
     if((x == 0) || (y == 0)) //trivial multiplication by 0
         return 0;
 
     return exp[(log[x] + log[y]) % (len - 1)];
-    //TODO: why (len - 1) and not len? (why it works?)
 }
 
 /**
@@ -70,7 +70,7 @@ uint16_t GF::mul(uint16_t x, uint16_t y)
  * @param divisor Divisor
  * @return Division result. 0 is returned when dividing by 0.
  */
-uint16_t GF::div(uint16_t dividend, uint16_t divisor)
+uint16_t GFn::div(uint16_t dividend, uint16_t divisor)
 {
     if(divisor == 0) return 0; //illegal division by 0, but for now just return 0
     if(dividend == 0) return 0; //trivial division of 0
@@ -90,11 +90,10 @@ uint16_t GF::div(uint16_t dividend, uint16_t divisor)
  * @param exponent Exponent
  * @return Result
  */
-uint16_t GF::pow(uint16_t x, uint16_t exponent)
+uint16_t GFn::pow(uint16_t x, uint16_t exponent)
 {
     //since a*log(x)=log(x^a) and b^log(x)=x, b^(a*log(x))=b^(log(x^a))=x^a, where b is the logarithm base
     return exp[(exponent * log[x]) % (len - 1)];
-    //TODO: why (len - 1) and not len? (why it works?)
 }
 
 /**
@@ -102,7 +101,7 @@ uint16_t GF::pow(uint16_t x, uint16_t exponent)
  * @param x Number of which inverse is calculated
  * @return 1/x
  */
-uint16_t GF::inv(uint16_t x)
+uint16_t GFn::inv(uint16_t x)
 {
     if(x == 0) //0 has no inverse
     	return 0; //but return 0
@@ -117,7 +116,7 @@ uint16_t GF::inv(uint16_t x)
  * @param y Multiplier
  * @return Multiplication result
  */
-uint16_t GF::slowMul(uint16_t x, uint16_t y)
+uint16_t GFn::slowMul(uint16_t x, uint16_t y)
 {
     if(x == 0 || y == 0)
         return 0;
@@ -130,7 +129,7 @@ uint16_t GF::slowMul(uint16_t x, uint16_t y)
  * @param x Input number
  * @return 0 if prime, -1 if not
  */
-int8_t GF::checkPrime(uint16_t x)
+int8_t GFn::checkPrime(uint16_t x)
 {
 	if(x < 2)
 		return -1; //definitely not primes
@@ -148,7 +147,7 @@ int8_t GF::checkPrime(uint16_t x)
  * @param max The limit
  * @return Prime number, 0 if fail
  */
-uint16_t GF::findPrime(uint16_t max)
+uint16_t GFn::findPrime(uint16_t max)
 {
 	if(max < 2)
 		return 0;
@@ -165,13 +164,28 @@ uint16_t GF::findPrime(uint16_t max)
 	return 0;
 }
 
+
+/**
+ * @brief Check if object is initialized
+ * @return 0 if initialized
+ */
+uint8_t GFn::isInitialized(void)
+{
+	if(len) //there is some characteristic set, so the object is initialized
+		return 0;
+
+	return 1;
+}
+
 /**
  * @brief Initializes Galois Field object
  * @param p Field characteristic GF(p), must be prime
  */
-GF::GF(uint16_t p)
+GFn::GFn(uint16_t p)
 {
-    if(checkPrime(p) != 0)
+    len = 0;
+
+	if(checkPrime(p) != 0)
     	return; //not a prime number
 
     len = p; //store characteristic
@@ -205,7 +219,7 @@ GF::GF(uint16_t p)
     exp[len - 1] = x; //store last element in exp table
 }
 
-GF::~GF()
+GFn::~GFn()
 {
     if(exp != nullptr)
         delete[] exp;

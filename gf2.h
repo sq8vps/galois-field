@@ -16,101 +16,92 @@
  */
 
 /**
-* @file gf.cpp
-* @brief Simple Galois field library
+* @file gf2.h
+* @brief Simple Galois field library for GF(2^8)
+* @version 1.1
 * @author Piotr Wilkon <sq8vps@gmail.com>
 * @copyright Copyright 2021 Piotr Wilkon, licensed under GNU GPLv3
 **/
 
-
-#ifndef GF_H
-#define GF_H
+#ifndef GF2_H
+#define GF2_H
 
 #include <stdint.h>
-#include <string.h>
 
-class GF
+#define GF2_POLY 0x11d //primitive polynomial for division within the GF(2^8)
+
+class GF2
 {
 public:
 	/**
-	 * @brief Addition in Galois field
+	 * @brief Addition in GF(2^8)
 	 * @param x Term 1
 	 * @param y Term 2
 	 * @return Sum
 	 */
-	uint16_t add(uint16_t x, uint16_t y);
+	uint8_t add(uint8_t x, uint8_t y);
 
 	/**
-	 * @brief Subtraction in Galois field
+	 * @brief Subtraction in GF(2^8)
 	 * @param x Minuend
 	 * @param y Subtrahend
 	 * @return Difference
 	 */
-	uint16_t sub(uint16_t x, uint16_t y);
+	uint8_t sub(uint8_t x, uint8_t y);
 
 	/**
-	 * @brief Multiplication in Galois field
+	 * @brief Multiplication in GF(2^8)
 	 * @param x Multiplicand
 	 * @param y Multiplier
 	 * @return Multiplication result
 	 */
-	uint16_t mul(uint16_t x, uint16_t y);
+	uint8_t mul(uint8_t x, uint8_t y);
 
 	/**
-	 * @brief Division in Galois field
+	 * @brief Division in GF(2^8)
 	 * @param dividend Dividend
 	 * @param divisor Divisor
 	 * @return Division result. 0 is returned when dividing by 0.
 	 */
-	uint16_t div(uint16_t dividend, uint16_t divisor);
+	uint8_t div(uint8_t dividend, uint8_t divisor);
 
 	/**
-	 * @brief Power in Galois field
+	 * @brief Power in GF(2^8)
 	 * @param x Base
 	 * @param exponent Exponent
 	 * @return Result
 	 */
-	uint16_t pow(uint16_t x, uint16_t exponent);
+	uint8_t pow(uint8_t x, uint8_t exponent);
 
 	/**
-	 * @brief Inverse in Galois field
+	 * @brief Inverse in GF(2^8)
 	 * @param x Number of which inverse is calculated
 	 * @return 1/x
 	 */
-	uint16_t inv(uint16_t x);
+	uint8_t inv(uint8_t x);
 	/**
-	 * @brief Slow (no lookup table) multiplication in Galois field
+	 * @brief Slow (no lookup table) multiplication in GF(2^8)
 	 * @param x Multiplicand
 	 * @param y Multiplier
 	 * @return Multiplication result
 	 */
-	uint16_t slowMul(uint16_t x, uint16_t y);
+	uint8_t slowMul(uint8_t x, uint8_t y);
 
 	/**
-	 * @brief Check if number is prime
-	 * @param x Input number
-	 * @return 0 if prime, -1 if not
+	 * @brief Check if object is initialized
+	 * @return 0 if initialized
 	 */
-	static int8_t checkPrime(uint16_t x);
+	uint8_t isInitialized(void);
 
 	/**
-	 * @brief Finds the highest prime number, but smaller than max
-	 * @param max The limit
-	 * @return Prime number, 0 if fail
+	 * @brief Initializes GF(2^8) object
 	 */
-	static uint16_t findPrime(uint16_t max);
-	/**
-	 * @brief Initializes Galois Field object
-	 * @param p Field characteristic GF(p), must be prime
-	 */
-	GF(uint16_t p);
-	~GF();
+	GF2();
+	~GF2();
 
 private:
-    uint16_t *exp; //exponent lookup table
-    uint16_t *log; //logarithm lookup table
-    uint16_t len; //field characteristic
+    uint8_t *exp; //exponent lookup table
+    uint8_t *log; //logarithm lookup table
 };
 
-
-#endif // REEDSOLOMON_H
+#endif
